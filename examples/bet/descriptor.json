@@ -1,0 +1,101 @@
+{
+  "name": "bet",
+  "tool-version": "5.0.8-5",
+  "description": "FSL's Brain Extraction Tool (BET)",
+  "command-line": ". ${FSLDIR}/etc/fslconf/fsl.sh && bet [input] [output] [outline] [mask] [skull] [nobrain]",
+  "container-image": {
+    "type": "docker",
+    "image": "gkiar/fsl-bet:5.0.8-5",
+    "index": "http://index.docker.io"
+    },
+  "schema-version": "0.5",
+	"suggested-resources": {
+  	"walltime-estimate": 300
+	},
+  "inputs": [
+    {
+      "id": "input_file",
+      "name": "Image to be skull-stripped",
+      "type": "File",
+      "value-key": "[input]",
+      "optional": false
+    },
+    {
+      "id": "output_file",
+      "name": "File name of the skull-stripped brain",
+      "type": "File",
+      "value-key": "[output]",
+      "optional": false
+    },
+    {
+      "id": "surface_outline",
+      "name": "Generate brain surface outline overlaid onto original image",
+      "type": "Flag",
+      "value-key": "[outline]",
+      "optional": true,
+      "command-line-flag": "-s"
+    },
+    {
+      "id": "mask",
+      "name": "Generate binary brain mask",
+      "type": "Flag",
+      "value-key": "[mask]",
+      "optional": true,
+      "command-line-flag": "-m"
+    },
+    {
+      "id": "skull",
+      "name": "Generate approximate skull image",
+      "type": "Flag",
+      "value-key": "[skull]",
+      "optional": true,
+      "command-line-flag": "-s"
+    },
+    {
+      "id": "no_brain",
+      "name": "Don't generate segmented brain image output",
+      "type": "Flag",
+      "value-key": "[nobrain]",
+      "optional": true,
+      "command-line-flag": "-n"
+    }
+  ],
+  "output-files": [
+    {
+      "id": "output_brain",
+      "name": "Skull stripped image",
+      "path-template": "[output].nii.gz",
+      "path-template-stripped-extensions": [
+        ".nii.gz", ".nii"
+      ],
+      "optional": true
+    },
+    {
+      "id": "output_outline",
+      "name": "Surface outline overlay image",
+      "path-template": "[output]_overlay.nii.gz",
+      "path-template-stripped-extensions": [
+        ".nii.gz", ".nii"
+      ],
+      "optional": true
+    },
+    {
+      "id": "output_mask",
+      "name": "Brain mask image",
+      "path-template": "[output]_mask.nii.gz",
+      "path-template-stripped-extensions": [
+        ".nii.gz", ".nii"
+      ],
+      "optional": true
+    },
+		{
+      "id": "output_skull",
+      "name": "Approximate skul image",
+      "path-template": "[output]_skull.nii.gz",
+      "path-template-stripped-extensions": [
+        ".nii.gz", ".nii"
+      ],
+      "optional": true
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{
+	"input_file": "example_t1.nii.gz",
+	"output_file": "betout_t1.nii.gz"
+}
