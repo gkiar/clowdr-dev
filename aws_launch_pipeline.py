@@ -7,7 +7,7 @@ import time
 import datetime
 
 
-def start_aws_session(creds=None):
+def start_aws_session(cred_file):
     """
     Expects a credentials CSV just as one would download from AWS
     """
@@ -15,10 +15,10 @@ def start_aws_session(creds=None):
     session = boto3.Session(aws_access_key_id=creds[0],
                             aws_secret_access_key=creds[1],
                             region_name="us-east-1")
-    return session
+    return session, creds
 
 
-def configure_iam_roles(iam):
+def configure_iam_roles(iam, verb=False):
     #TODO: fix hard code
     with open('./aws_templates/roles.json') as fhandle:
         roles = json.load(fhandle)
@@ -35,7 +35,8 @@ def configure_iam_roles(iam):
 
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchEntity':
-                print("Role \"{}\" not found - making role...".format(name))
+                if verb:
+                    print("Role \"{}\" not found - making role...".format(name))
                 role['AssumeRolePolicyDocument'] = role['AssumeRolePolicyDocument'].replace('\'', '"')
                 response = iam.create_role(**role)
                 role['Arn'] = response['Role']['Arn']
@@ -45,11 +46,11 @@ def configure_iam_roles(iam):
                 iam.attach_role_policy(RoleName=name,
                                        PolicyArn=policies[idx])
                 roles[rolename] = role
+        if verb:
+            print("Role ARN: {}".format(roles[rolename]['Arn']))
 
-        print(roles[rolename]['Arn'])
 
-
-def configure_s3(s3):
+def configure_s3(s3, verb=False):
     ts = time.time()
     dt = datetime.datetime.fromtimestamp(ts).strftime('%Y%m%d%H%M%S')
     
@@ -59,163 +60,201 @@ def configure_s3(s3):
     buckets = [buck['Name'] for buck in s3.list_buckets()['Buckets']]
 
     if buckname in buckets:
-        print('/{}'.format(buckname))
+        if verb:
+            print("S3 Bucket name: /{}".format(buckname))
     else:
         response = s3.create_bucket(
             ACL='public-read-write',
             Bucket=buckname
         )
-        print(response['Location'])
+        if verb:
+            print("S3 Bucket name: /{}".format(response['Location']))
 
+
+def configure_batch(ec2, batch, verb=False):
+    sg = [sg['GroupId'] for sg in ec2.describe_security_groups()['SecurityGroups'] if sg['GroupName'] == 'default']
+    net = [nets['SubnetId'] for nets in ec2.describe_subnets()['Subnets']]
+
+    def waitUntilDone(name, status):
+        try:
+            curr = batch.describe_compute_environments(computeEnvironments=[name])['computeEnvironments'][0]['status']
+            if curr == status:
+                waitUntilDone(status)
+            else:
+                return
+        except:
+            return
+
+    with open('./aws_templates/env.json') as fhandle:
+        compute = json.load(fhandle)
+
+    try:
+        name = compute['computeEnvironmentName']
+        response = batch.describe_compute_environments(computeEnvironments=[name])
+        if len(response['computeEnvironments']):
+            if response['computeEnvironments'][0]['status'] != 'VALID' or            response['computeEnvironments'][0]['state'] != 'ENABLED':
+                raise ClientError({'Error': {'Code':'InvalidEnvironment'}}, 'describe_compute_environments')
+            else:
+                compute['computeEnvironmentArn'] = response['computeEnvironments'][0]['computeEnvironmentArn']
+        else:
+            raise ClientError({"Error":{"Code":"NoSuchEntity"}}, 'describe_compute_environments')
+
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'InvalidEnvironment':
+            if verb:
+                print("Environment \"{}\" invalid - deleting environment...".format(name))
+            response = batch.update_compute_environment(computeEnvironment=name, state='DISABLED')
+            waitUntilDone(name, 'UPDATING')
+            response = batch.delete_compute_environment(computeEnvironment=name)
+            waitUntilDone(name, 'DELETING')
+
+        if e.response['Error']['Code'] == 'NoSuchEntity' or e.response['Error']['Code'] == 'InvalidEnvironment':
+            if verb:
+                print("Environment \"{}\" not found - creating environment...".format(name))
+            compute['computeResources']['subnets'] = net
+            compute['computeResources']['securityGroupIds'] = sg
+            compute['computeResources']['instanceRole'] = roles['ecs']['Arn'].replace('role', 'instance-profile')
+            compute['serviceRole'] = roles['batch']['Arn']
+
+            response = batch.create_compute_environment(**compute)
+            waitUntilDone(name, 'CREATING')
+            compute['computeEnvironmentArn'] = response['computeEnvironmentArn']
+
+    if verb:
+        print("Compute Environment ARN: {}".format(compute['computeEnvironmentArn']))
+
+
+    with open('./aws_templates/queue.json') as fhandle:
+        queue = json.load(fhandle)
+
+    try:
+        name = queue['jobQueueName']
+        response = batch.describe_job_queues()
+        if not len(response['jobQueues']):
+            raise ClientError({"Error":{"Code":"NoSuchEntity"}}, 'describe_job_queues')
+        else:
+            queue_names = [response['jobQueues'][i]['jobQueueName']
+                           for i in range(len(response['jobQueues']))]
+            if name not in queue_names:
+                raise ClientError({"Error":{"Code":"NoSuchEntity"}}, 'describe_job_queues')
+            queue['jobQueueArn'] = response['jobQueues'][0]['jobQueueArn']
+    except ClientError as e:
+        if verb:
+            print(e)
+        if e.response['Error']['Code'] == 'NoSuchEntity':
+            print("Queue \"{}\" not found - creating queue...".format(name))
+            response = batch.create_job_queue(**queue)
+            queue['jobQueueArn'] = response['jobQueueArn']
+
+    if verb:
+        print("Job Queue ARN: {}".format(queue['jobQueueArn']))
+
+    with open('./aws_templates/def.json') as fhandle:
+        job = json.load(fhandle)
+
+    try:
+        name = job['jobDefinitionName']
+        response = batch.describe_job_definitions()
+        if not len(response['jobDefinitions']) or response['jobDefinitions'][0]['status'] == 'INACTIVE':
+            raise ClientError({"Error":{"Code":"NoSuchEntity"}}, 'describe_job_definitions')
+        else:
+            job['jobDefinitionArn'] = response['jobDefinitions'][0]['jobDefinitionArn']
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchEntity':
+            if verb:
+                print("Job \"{}\" not found - creating job...".format(name))
+            response = batch.register_job_definition(**job)
+            job['jobDefinitionArn'] = response['jobDefinitionArn']
+
+    if verb:
+        print("Job Definition ARN: {}".format(job['jobDefinitionArn']))
+
+
+
+def launch_job(batch, creds):
+    orides = {"environment":[{"name":"AWS_ACCESS_KEY_ID","value":creds[0]},
+                             {"name":"AWS_SECRET_ACCESS_KEY","value":creds[1]}]}
+    response = batch.submit_job(jobName="testing-2", jobQueue="clowdr-q",
+                                jobDefinition="clowdr",
+                                containerOverrides=orides)
+    jid = response['jobId']
+    return jid
+
+
+def wait_for_job(batch, jid, status):
+    try:
+        stat = batch.describe_jobs(jobs=[jid])['jobs'][0]['status']
+        if stat == status:
+            return
+        else:
+            result = wait_for_job(batch, jid, status)
+            return result
+    except Exception as e:
+        print("Failed with: {}".format(e))
+        return -1
+
+def monitor_job(log, lsn, stream):
+    try:
+        tmp_stream = log.get_log_events(logGroupName="/aws/batch/job",
+                                        logStreamName=lsn)['events']
+        if len(tmp_stream) > len(stream):
+            new = tmp_stream[len(stream):]
+            for line in new:
+                print("{}".format(line['message']))
+            stream += new
+        return stream
+    except Exception as e:
+        print("Failed with: {}".format(e))
+        return []
 
 def clowdr_aws_driver():
     """
     Main driver of the AWS script
     """
-    clowdr = clowdrAWS()
 
     # Create session for accessing the AWS API
     #TODO: fix hard code
+    verb = False
+    detached = False
+
     cred_file = '/Users/gkiar/Dropbox/keys/sugreg.csv'
-    session = clowdr.start_aws_session(cred_file)
+    session, creds = start_aws_session(cred_file)
 
     # Configure roles in AWS
     iam = session.client('iam')
-    configure_iam_roles(iam)
+    configure_iam_roles(iam, verb=verb)
 
     # Ensure the provided Bucket exists, and that we have write access
     s3 = session.client('s3')
-    configure_s3(s3)
+    configure_s3(s3, verb=verb)
 
-    return session
+    # Configure Batch/EC2 setting
+    ec2 = session.client('ec2')
+    batch = session.client('batch')
+    configure_batch(ec2, batch, verb=verb)
 
+    # Submit job
+    jid = launch_job(batch, creds)
+
+    if not detached:
+        print("Launched job with ID: {}".format(jid))
+        log = session.client('logs')
+        rec = -1
+        while rec is -1:
+            rec = wait_for_job(batch, jid, "RUNNING")
+        
+        # Wait a second to let the logStreamName get updated
+        time.sleep(1)
+        logStreamName = batch.describe_jobs(jobs=[jid])['jobs'][0]['container']['logStreamName']
+        print("Logstream ID: {}".format(logStreamName))
+
+        stream = []
+        while batch.describe_jobs(jobs=[jid])['jobs'][0]['status'] == "RUNNING":
+            stream = monitor_job(log, logStreamName, stream)
+        stream = monitor_job(log, logStreamName, stream)
+
+        print("Job finished with status: {}".format(batch.describe_jobs(jobs=[jid])['jobs'][0]['status']))
 
 if __name__ == "__main__":
     session = clowdr_aws_driver()
-
-    
-    ec2 = session.client('ec2')
-    batch = session.client('batch')
-
-# In[7]:
-sg = [sg['GroupId'] for sg in ec2.describe_security_groups()['SecurityGroups'] if sg['GroupName'] == 'default']
-net = [nets['SubnetId'] for nets in ec2.describe_subnets()['Subnets']]
-
-def waitUntilDone(name, status):
-    try:
-        curr = batch.describe_compute_environments(computeEnvironments=[name])['computeEnvironments'][0]['status']
-        if curr == status:
-            waitUntilDone(status)
-        else:
-            return
-    except:
-        return
-
-with open('./aws_templates/env.json') as fhandle:
-    compute = json.load(fhandle)
-
-try:
-    name = compute['computeEnvironmentName']
-    response = batch.describe_compute_environments(computeEnvironments=[name])
-    if len(response['computeEnvironments']):
-        if response['computeEnvironments'][0]['status'] != 'VALID' or            response['computeEnvironments'][0]['state'] != 'ENABLED':
-            raise ClientError({'Error': {'Code':'InvalidEnvironment'}}, 'describe_compute_environments')
-        else:
-            compute['computeEnvironmentArn'] = response['computeEnvironments'][0]['computeEnvironmentArn']
-    else:
-        raise ClientError({"Error":{"Code":"NoSuchEntity"}}, 'describe_compute_environments')
-
-except ClientError as e:
-    if e.response['Error']['Code'] == 'InvalidEnvironment':
-        print("Environment \"{}\" invalid - deleting environment...".format(name))
-        response = batch.update_compute_environment(computeEnvironment=name, state='DISABLED')
-        waitUntilDone(name, 'UPDATING')
-        response = batch.delete_compute_environment(computeEnvironment=name)
-        waitUntilDone(name, 'DELETING')
-
-    if e.response['Error']['Code'] == 'NoSuchEntity' or e.response['Error']['Code'] == 'InvalidEnvironment':
-        print("Environment \"{}\" not found - creating environment...".format(name))
-        compute['computeResources']['subnets'] = net
-        compute['computeResources']['securityGroupIds'] = sg
-        compute['computeResources']['instanceRole'] = roles['ecs']['Arn'].replace('role', 'instance-profile')
-        compute['serviceRole'] = roles['batch']['Arn']
-
-        response = batch.create_compute_environment(**compute)
-        waitUntilDone(name, 'CREATING')
-        compute['computeEnvironmentArn'] = response['computeEnvironmentArn']
-
-print(compute['computeEnvironmentArn'])
-
-
-# In[13]:
-
-
-with open('./aws_templates/queue.json') as fhandle:
-    queue = json.load(fhandle)
-
-try:
-    name = queue['jobQueueName']
-    response = batch.describe_job_queues()
-    if not len(response['jobQueues']):
-        raise ClientError({"Error":{"Code":"NoSuchEntity"}}, 'describe_job_queues')
-    else:
-        queue_names = [response['jobQueues'][i]['jobQueueName']
-                       for i in range(len(response['jobQueues']))]
-        if name not in queue_names:
-            raise ClientError({"Error":{"Code":"NoSuchEntity"}}, 'describe_job_queues')
-        queue['jobQueueArn'] = response['jobQueues'][0]['jobQueueArn']
-except ClientError as e:
-    print(e)
-    if e.response['Error']['Code'] == 'NoSuchEntity':
-        print("Queue \"{}\" not found - creating queue...".format(name))
-        response = batch.create_job_queue(**queue)
-        queue['jobQueueArn'] = response['jobQueueArn']
-
-print(queue['jobQueueArn'])
-
-
-# In[16]:
-
-
-# task = {'name': 'clowder-driver'}
-with open('./aws_templates/def.json') as fhandle:
-    job = json.load(fhandle)
-
-try:
-    name = job['jobDefinitionName']
-    response = batch.describe_job_definitions()
-    if not len(response['jobDefinitions']) or response['jobDefinitions'][0]['status'] == 'INACTIVE':
-        raise ClientError({"Error":{"Code":"NoSuchEntity"}}, 'describe_job_definitions')
-    else:
-        job['jobDefinitionArn'] = response['jobDefinitions'][0]['jobDefinitionArn']
-except ClientError as e:
-    if e.response['Error']['Code'] == 'NoSuchEntity':
-        print("Job \"{}\" not found - creating job...".format(name))
-        response = batch.register_job_definition(**job)
-        job['jobDefinitionArn'] = response['jobDefinitionArn']
-
-print(job['jobDefinitionArn'])
-
-
-# In[17]:
-
-
-orides = {"environment":[{"name":"AWS_ACCESS_KEY_ID","value":creds[0]},
-                         {"name":"AWS_SECRET_ACCESS_KEY","value":creds[1]}]}
-response = batch.submit_job(jobName="testing-2", jobQueue="clowdr-q",
-                            jobDefinition="clowdr",
-                            containerOverrides=orides)
-
-
-# In[18]:
-
-
-jid = response['jobId']
-while True:
-    stat = batch.describe_jobs(jobs=[jid])['jobs'][0]['status']
-    print(stat)
-    if stat == 'SUCCEEDED' or stat == 'FAILED':
-        break;
-    else:
-        time.sleep(30)
 
