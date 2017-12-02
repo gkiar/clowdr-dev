@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
 from botocore.exceptions import *
+from argparse import ArgumentParser
 import boto3
 import json
 import time
 import datetime
+import os
+import sys
 
+curdir = os.path.dirname(__file__)
 
 def start_aws_session(cred_file):
     """
@@ -20,7 +24,8 @@ def start_aws_session(cred_file):
 
 def configure_iam_roles(iam, verb=False):
     #TODO: fix hard code
-    with open('./aws_templates/roles.json') as fhandle:
+    fp = os.path.join(curdir, 'aws_templates', 'roles.json')
+    with open(fp) as fhandle:
         roles = json.load(fhandle)
 
     policies = ['arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole',
@@ -85,7 +90,8 @@ def configure_batch(ec2, batch, verb=False):
         except:
             return
 
-    with open('./aws_templates/env.json') as fhandle:
+    fp = os.path.join(curdir, 'aws_templates', 'env.json')
+    with open(fp) as fhandle:
         compute = json.load(fhandle)
 
     try:
@@ -124,7 +130,8 @@ def configure_batch(ec2, batch, verb=False):
         print("Compute Environment ARN: {}".format(compute['computeEnvironmentArn']))
 
 
-    with open('./aws_templates/queue.json') as fhandle:
+    fp = os.path.join(curdir, 'aws_templates', 'queue.json')
+    with open(fp) as fhandle:
         queue = json.load(fhandle)
 
     try:
@@ -149,7 +156,8 @@ def configure_batch(ec2, batch, verb=False):
     if verb:
         print("Job Queue ARN: {}".format(queue['jobQueueArn']))
 
-    with open('./aws_templates/def.json') as fhandle:
+    fp = os.path.join(curdir, 'aws_templates', 'def.json')
+    with open(fp) as fhandle:
         job = json.load(fhandle)
 
     try:
@@ -183,15 +191,15 @@ def launch_job(batch, creds):
 
 def wait_for_job(batch, jid, status):
     try:
-        stat = batch.describe_jobs(jobs=[jid])['jobs'][0]['status']
-        if stat == status:
-            return
-        else:
-            result = wait_for_job(batch, jid, status)
-            return result
+        state = False
+        while not state:
+            stat = batch.describe_jobs(jobs=[jid])['jobs'][0]['status']
+            state = stat == status
+        return True
     except Exception as e:
-        print("Failed with: {}".format(e))
+        print("Waiting failed with: {}".format(e))
         return -1
+
 
 def monitor_job(log, lsn, stream):
     try:
@@ -207,17 +215,13 @@ def monitor_job(log, lsn, stream):
         print("Failed with: {}".format(e))
         return []
 
-def clowdr_aws_driver():
+
+def aws_driver(cred_file, verb=False, detach=False):
     """
-    Main driver of the AWS script
+    Driver of the AWS controller
     """
 
     # Create session for accessing the AWS API
-    #TODO: fix hard code
-    verb = False
-    detached = False
-
-    cred_file = '/Users/gkiar/Dropbox/keys/sugreg.csv'
     session, creds = start_aws_session(cred_file)
 
     # Configure roles in AWS
@@ -236,13 +240,11 @@ def clowdr_aws_driver():
     # Submit job
     jid = launch_job(batch, creds)
 
-    if not detached:
+    if not detach:
         print("Launched job with ID: {}".format(jid))
         log = session.client('logs')
-        rec = -1
-        while rec is -1:
-            rec = wait_for_job(batch, jid, "RUNNING")
-        
+        rec = wait_for_job(batch, jid, "RUNNING")
+
         # Wait a second to let the logStreamName get updated
         time.sleep(1)
         logStreamName = batch.describe_jobs(jobs=[jid])['jobs'][0]['container']['logStreamName']
@@ -255,6 +257,27 @@ def clowdr_aws_driver():
 
         print("Job finished with status: {}".format(batch.describe_jobs(jobs=[jid])['jobs'][0]['status']))
 
+
+def main(args=None):
+    parser = ArgumentParser(description="Clowdr Controller")
+    parser.add_argument("credentials", action="store", help="Credentials file"\
+                        " for AWS.")
+    parser.add_argument("-d", "--detach", action="store_true",
+                        help="Toggles detached mode.")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Toggles verbose outputs.")
+    result = parser.parse_args(args) if args is not None else parser.parse_args()
+
+    aws_driver(result.credentials, result.verbose, result.detach)
+
+
 if __name__ == "__main__":
-    session = clowdr_aws_driver()
+    try:
+        session = main()
+    except KeyboardInterrupt:
+        print("Interrupted")
+        try:
+            sys.exit(0)
+        except:
+            os._exit(0)
 
