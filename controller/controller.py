@@ -260,8 +260,16 @@ def aws_driver(cred_file, verb=False, detach=False):
 
 def main(args=None):
     parser = ArgumentParser(description="Clowdr Controller")
+    # parser.add_argument("data", action="store", help="Path to data on S3 "\
+    #                     "Bucket.")
+    # parser.add_argument("tool", action="store", help="Boutiques descriptor "\
+    #                     "for tool.")
+    # parser.add_argument("invocation", action="store", help="Parameters for "\
+    #                     "desired invocations.")
     parser.add_argument("credentials", action="store", help="Credentials file"\
                         " for AWS.")
+    # parser.add_argument("--bids", action="store_true", help="Indicates BIDS "
+    #                     "app and dataset.")
     parser.add_argument("-d", "--detach", action="store_true",
                         help="Toggles detached mode.")
     parser.add_argument("-v", "--verbose", action="store_true",
