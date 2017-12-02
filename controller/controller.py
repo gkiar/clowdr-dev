@@ -57,11 +57,7 @@ def configure_iam_roles(iam, verb=False):
 
 
 def configure_s3(s3, verb=False):
-    ts = time.time()
-    dt = datetime.datetime.fromtimestamp(ts).strftime('%Y%m%d%H%M%S')
-    
     buckname = 'clowdr-storage'
-    dpath = dt
 
     buckets = [buck['Name'] for buck in s3.list_buckets()['Buckets']]
 
@@ -243,11 +239,14 @@ def aws_driver(invocation, credentials, verb=False, detach=False):
     # Push invocation, descriptor, metadata to S3
     data = "s3://clowdr-storage"
     data_bucket = data.split("s3://")[-1].split('/')[0]
-    randx = round(random.random()*1000000)
-    s3.upload_file(invocation, data_bucket,
-                   "clowdrtask/{}/execution.sh".format(randx))
 
-    loc = "s3://{}/clowdrtask/{}/".format(data_bucket, randx)
+    ts = time.time()
+    dt = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
+    randx = random.randint(0, 1000000)
+    s3.upload_file(invocation, data_bucket,
+                   "clowdrtask/{}/{}/execution.sh".format(dt, randx))
+
+    loc = "s3://{}/clowdrtask/{}/{}".format(data_bucket, dt, randx)
 
     # Submit job
     jid = launch_job(batch, creds, loc)
