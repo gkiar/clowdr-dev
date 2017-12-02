@@ -3,7 +3,7 @@
     "type": "container",
     "parameters": {},
     "containerProperties": {
-        "image": "gkiar/clowder-server",
+        "image": "gkiar/clowdrtask",
         "vcpus": 1,
         "memory": 2000,
         "command": [

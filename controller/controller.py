@@ -179,9 +179,10 @@ def configure_batch(ec2, batch, verb=False):
 
 
 
-def launch_job(batch, creds):
+def launch_job(batch, creds, dpath):
     orides = {"environment":[{"name":"AWS_ACCESS_KEY_ID","value":creds[0]},
-                             {"name":"AWS_SECRET_ACCESS_KEY","value":creds[1]}]}
+                             {"name":"AWS_SECRET_ACCESS_KEY","value":creds[1]}],
+              "command":[dpath]}
     response = batch.submit_job(jobName="testing-2", jobQueue="clowdr-q",
                                 jobDefinition="clowdr",
                                 containerOverrides=orides)
@@ -195,6 +196,7 @@ def wait_for_job(batch, jid, status):
         while not state:
             stat = batch.describe_jobs(jobs=[jid])['jobs'][0]['status']
             state = stat == status
+            if stat == "FAILED" or stat == "SUCCEEDED": raise Exception("Task Complete")
         return True
     except Exception as e:
         print("Waiting failed with: {}".format(e))
@@ -237,11 +239,16 @@ def aws_driver(cred_file, verb=False, detach=False):
     batch = session.client('batch')
     configure_batch(ec2, batch, verb=verb)
 
+    # Push invocation, descriptor, metadata to S3
+    loc = "s3://clowdr-storage/clowdr-1-task/"
+
     # Submit job
-    jid = launch_job(batch, creds)
+    jid = launch_job(batch, creds, loc)
+
+    if not detach or verb:
+        print("Launched job with ID: {}".format(jid))
 
     if not detach:
-        print("Launched job with ID: {}".format(jid))
         log = session.client('logs')
         rec = wait_for_job(batch, jid, "RUNNING")
 
