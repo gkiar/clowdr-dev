@@ -2,6 +2,7 @@
 
 from botocore.exceptions import *
 from argparse import ArgumentParser
+import random
 import boto3
 import json
 import time
@@ -218,13 +219,13 @@ def monitor_job(log, lsn, stream):
         return []
 
 
-def aws_driver(cred_file, verb=False, detach=False):
+def aws_driver(invocation, credentials, verb=False, detach=False):
     """
     Driver of the AWS controller
     """
 
     # Create session for accessing the AWS API
-    session, creds = start_aws_session(cred_file)
+    session, creds = start_aws_session(credentials)
 
     # Configure roles in AWS
     iam = session.client('iam')
@@ -240,7 +241,13 @@ def aws_driver(cred_file, verb=False, detach=False):
     configure_batch(ec2, batch, verb=verb)
 
     # Push invocation, descriptor, metadata to S3
-    loc = "s3://clowdr-storage/clowdr-1-task/"
+    data = "s3://clowdr-storage"
+    data_bucket = data.split("s3://")[-1].split('/')[0]
+    randx = round(random.random()*1000000)
+    s3.upload_file(invocation, data_bucket,
+                   "clowdrtask/{}/execution.sh".format(randx))
+
+    loc = "s3://{}/clowdrtask/{}/".format(data_bucket, randx)
 
     # Submit job
     jid = launch_job(batch, creds, loc)
@@ -271,8 +278,8 @@ def main(args=None):
     #                     "Bucket.")
     # parser.add_argument("tool", action="store", help="Boutiques descriptor "\
     #                     "for tool.")
-    # parser.add_argument("invocation", action="store", help="Parameters for "\
-    #                     "desired invocations.")
+    parser.add_argument("invocation", action="store", help="Parameters for "\
+                        "desired invocations.")
     parser.add_argument("credentials", action="store", help="Credentials file"\
                         " for AWS.")
     # parser.add_argument("--bids", action="store_true", help="Indicates BIDS "
@@ -283,7 +290,8 @@ def main(args=None):
                         help="Toggles verbose outputs.")
     result = parser.parse_args(args) if args is not None else parser.parse_args()
 
-    aws_driver(result.credentials, result.verbose, result.detach)
+    aws_driver(result.invocation, result.credentials,
+               result.verbose, result.detach)
 
 
 if __name__ == "__main__":
