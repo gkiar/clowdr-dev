@@ -215,7 +215,7 @@ def monitor_job(log, lsn, stream):
         return []
 
 
-def aws_driver(invocation, credentials, verb=False, detach=False):
+def aws_driver(data, invocation, credentials, verb=False, detach=False):
     """
     Driver of the AWS controller
     """
@@ -229,7 +229,7 @@ def aws_driver(invocation, credentials, verb=False, detach=False):
 
     # Ensure the provided Bucket exists, and that we have write access
     s3 = session.client('s3')
-    configure_s3(s3, verb=verb)
+    # configure_s3(s3, verb=verb)
 
     # Configure Batch/EC2 setting
     ec2 = session.client('ec2')
@@ -237,7 +237,7 @@ def aws_driver(invocation, credentials, verb=False, detach=False):
     configure_batch(ec2, batch, verb=verb)
 
     # Push invocation, descriptor, metadata to S3
-    data = "s3://clowdr-storage"
+    # data = "s3://clowdr-storage"
     data_bucket = data.split("s3://")[-1].split('/')[0]
 
     ts = time.time()
@@ -273,8 +273,8 @@ def aws_driver(invocation, credentials, verb=False, detach=False):
 
 def main(args=None):
     parser = ArgumentParser(description="Clowdr Controller")
-    # parser.add_argument("data", action="store", help="Path to data on S3 "\
-    #                     "Bucket.")
+    parser.add_argument("data", action="store", help="Path to data on S3 "\
+                        "Bucket.")
     # parser.add_argument("tool", action="store", help="Boutiques descriptor "\
     #                     "for tool.")
     parser.add_argument("invocation", action="store", help="Parameters for "\
@@ -289,7 +289,7 @@ def main(args=None):
                         help="Toggles verbose outputs.")
     result = parser.parse_args(args) if args is not None else parser.parse_args()
 
-    aws_driver(result.invocation, result.credentials,
+    aws_driver(result.data, result.invocation, result.credentials,
                result.verbose, result.detach)
 
 
