@@ -5,12 +5,14 @@ aws s3 cp --recursive "$1" /task/
 chmod +x -R /task/
 
 # Parse metadata
-cat /task/metadata.clwdr
-
+source /task/metadata.clwdr
 
 # Get input data, invocation, and descriptor from S3
-# aws s3 cp input data
-
+if [ bids == true ]; then
+	aws s3 cp ${inputdata} /data
+else
+	echo thing
+fi
 
 # Validate descriptor/invocation/input data combination
 

@@ -1,3 +1,4 @@
-s3://clowdr-storage/ds114/
-descriptor.json
-invocation.json
+export inputdata=s3://clowdr-storage/ds114/
+export descirptor=descriptor.json
+export bids=true
+export invocation=invocation.json

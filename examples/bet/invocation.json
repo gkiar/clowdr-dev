@@ -1,4 +1,7 @@
 {
-	"input_file": "example_t1.nii.gz",
-	"output_file": "betout_t1.nii.gz"
+	"bids_dir": "/my/dataset/",
+	"output_dir": "/my/output/dataset",
+	"analysis_level": "participant",
+	"participant_label": "01",
+	"session_label": "test"
 }
