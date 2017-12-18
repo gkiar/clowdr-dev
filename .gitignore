@@ -1,5 +1,6 @@
 # Application specific conditions
 credentials.csv
+data/
 *.swp
 
 # Byte-compiled / optimized / DLL files

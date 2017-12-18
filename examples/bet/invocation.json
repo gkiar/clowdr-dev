@@ -1,7 +1,6 @@
 {
-	"bids_dir": "/my/dataset/",
-	"output_dir": "/my/output/dataset",
-	"analysis_level": "participant",
-	"participant_label": "01",
-	"session_label": "test"
+	  "bids_dir": "ds114",
+	  "output_dir_name": "ds114/outs/",
+	  "analysis_level": "participant",
+	  "participant_label": "01"
 }
