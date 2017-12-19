@@ -11,4 +11,4 @@ RUN chmod +x /opt/entrypoint.py &&\
 		mkdir /task /data &&\
 		chmod 777 /task /data
 
-ENTRYPOINT ["/opt/entrypoint.py"]
+ENTRYPOINT ["python3", "/opt/entrypoint.py"]
