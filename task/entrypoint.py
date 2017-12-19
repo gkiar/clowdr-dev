@@ -10,19 +10,30 @@ import json
 
 def process_task(metadata):
     # Get metadata
+    # local = "/task/"
+    # aws_get(metadata, local)
 
     # Parse metadata
+    metadata = json.load(open(metadata))
+    descriptor = metadata['descriptor']
+    invocation = metadata['invocation']
+    input_data = metadata['input_data']
+    bids       = metadata['bids']
 
     # Get descriptor and invocation
+    # aws_get(descriptor, local)
+    # aws_get(invocation, local)
 
     # Get input data
-    remote = "s3://something/" 
-    local = "/data/"
-    get(remote, local)
+    # local = "/data/"
+    # for dataloc in input_data:
+    #     aws_get(dataloc, local)
+
+    # Move to correct location
+    os.chdir('/data')
 
     # Validate descriptor + invocation + input data combo
     bosh.validate(descriptor)
-    bosh.execute('simulate {} {}'.format(descriptor, invocation)
 
     # Launch task
     bosh.execute('launch {} {}'.format(descriptor, invocation))
@@ -30,9 +41,9 @@ def process_task(metadata):
     # Get list of bosh exec outputs
 
     # Push outputs
-    local = "/path/to/some/outputs"
-    remote = "s3://something"
-    post(local, remote)
+    # local = "/path/to/some/outputs"
+    # remote = "s3://something"
+    # aws_post(local, remote)
 
 
 def aws_get(remote, local):
