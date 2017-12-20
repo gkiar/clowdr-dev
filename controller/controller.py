@@ -215,7 +215,8 @@ def monitor_job(log, lsn, stream):
         return []
 
 
-def aws_driver(data, invocation, credentials, verb=False, detach=False):
+def aws_driver(datapath, tool, invocation, credentials,
+               bids=True, verb=False, detach=False):
     """
     Driver of the AWS controller
     """
@@ -238,13 +239,33 @@ def aws_driver(data, invocation, credentials, verb=False, detach=False):
 
     # Push invocation, descriptor, metadata to S3
     # data = "s3://clowdr-storage"
-    data_bucket = data.split("s3://")[-1].split('/')[0]
+    data_bucket = datapath.split("s3://")[-1].split('/')[0]
 
     ts = time.time()
     dt = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
     randx = random.randint(0, 1000000)
-    s3.upload_file(invocation, data_bucket,
-                   "clowdrtask/{}/{}/execution.sh".format(dt, randx))
+
+    metadict = {}
+    metadict["bids"] = bids
+    if bids:
+        parties = json.load(open(invocation)).get("participant_label")
+        if len(parties) > 0:
+            metadict["input_data"] = ["{}/sub-{}/".format(datapath, sub)
+                                      for sub in parties]
+        else:
+            metadict["input_data"] = [datapath]
+
+    dpath = "clowdrtask/{}/{}/metadata.json".format(dt, randx)
+    s3.upload_file(descriptor, data_bucket, dpath)
+    metadict["descriptor"] = dpath
+
+    ipath = "clowdrtask/{}/{}/invocation.json".format(dt, randx)
+    s3.upload_file(invocation, data_bucket, ipath)
+    metadict["invocation"] = ipath
+
+
+    s3.upload_file(metadata, data_bucket,
+                   "clowdrtask/{}/{}/metadata.json".format(dt, randx))
 
     loc = "s3://{}/clowdrtask/{}/{}".format(data_bucket, dt, randx)
 
@@ -273,24 +294,24 @@ def aws_driver(data, invocation, credentials, verb=False, detach=False):
 
 def main(args=None):
     parser = ArgumentParser(description="Clowdr Controller")
-    parser.add_argument("data", action="store", help="Path to data on S3 "\
+    parser.add_argument("datapath", action="store", help="Path to data on S3 "\
                         "Bucket.")
-    # parser.add_argument("tool", action="store", help="Boutiques descriptor "\
-    #                     "for tool.")
+    parser.add_argument("tool", action="store", help="Boutiques descriptor "\
+                        "for tool.")
     parser.add_argument("invocation", action="store", help="Parameters for "\
                         "desired invocations.")
     parser.add_argument("credentials", action="store", help="Credentials file"\
                         " for AWS.")
-    # parser.add_argument("--bids", action="store_true", help="Indicates BIDS "
-    #                     "app and dataset.")
+    parser.add_argument("--bids", action="store_true", help="Indicates BIDS "
+                        "app and dataset.")
     parser.add_argument("-d", "--detach", action="store_true",
                         help="Toggles detached mode.")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Toggles verbose outputs.")
     result = parser.parse_args(args) if args is not None else parser.parse_args()
 
-    aws_driver(result.data, result.invocation, result.credentials,
-               result.verbose, result.detach)
+    aws_driver(result.datapath, result.tool, result.invocation,
+               result.credentials, result.bids, result.verbose, result.detach)
 
 
 if __name__ == "__main__":

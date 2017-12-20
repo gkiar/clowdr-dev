@@ -10,33 +10,41 @@ import json
 
 def process_task(metadata):
     # Get metadata
-    # local = "/task/"
-    # aws_get(metadata, local)
+    local = "/task/"
+    aws_get(metadata, local)
 
     # Parse metadata
-    metadata = json.load(open(metadata))
+    metadata   = json.load(open(metadata))
     descriptor = metadata['descriptor']
     invocation = metadata['invocation']
     input_data = metadata['input_data']
     bids       = metadata['bids']
 
     # Get descriptor and invocation
-    # aws_get(descriptor, local)
-    # aws_get(invocation, local)
+    desc_local = op.join(local, "descriptor.json")
+    aws_get(descriptor, desc_local)
+    invo_local = op.join(local, "invocation.json")
+    aws_get(invocation, local)
 
     # Get input data
-    # local = "/data/"
-    # for dataloc in input_data:
-    #     aws_get(dataloc, local)
+    local = "/data/"
+    for dataloc in input_data:
+        aws_get(dataloc, local)
 
     # Move to correct location
     os.chdir('/data')
 
     # Validate descriptor + invocation + input data combo
-    bosh.validate(descriptor)
+    bosh.validate(desc_local)
+
+    if bids:
+        parties = json.load(open(invo_local)).get("participant_label")
+        if len(parties) > 0:
+            for part in parties:
+                
 
     # Launch task
-    bosh.execute('launch',  descriptor, invocation)
+    bosh.execute('launch',  desc_local, invo_local)
 
     # Get list of bosh exec outputs
 
