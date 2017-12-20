@@ -36,7 +36,7 @@ def process_task(metadata):
     bosh.validate(descriptor)
 
     # Launch task
-    bosh.execute('launch {} {}'.format(descriptor, invocation))
+    bosh.execute('launch',  descriptor, invocation)
 
     # Get list of bosh exec outputs
 
