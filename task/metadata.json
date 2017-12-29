@@ -2,7 +2,7 @@
   "input_data": [
     "s3://clowdr-storage/ds114/"
   ],
-  "descriptor": "/Users/gkiar/code/gkiar/clowdr-dev/examples/bet/descriptor.json",
-  "invocation": "/Users/gkiar/code/gkiar/clowdr-dev/examples/bet/invocation.json",
+  "descriptor": "../examples/bet/descriptor.json",
+  "invocation": "../examples/bet/invocation.json",
   "bids": "true"
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser
+import re
 import os.path as op
 import boutiques as bosh
 import boto3
@@ -10,8 +11,8 @@ import json
 
 def process_task(metadata):
     # Get metadata
-    local = "/task/"
-    aws_get(metadata, local)
+    local_task_dir = "/task/"
+    # aws_get(metadata, local)
 
     # Parse metadata
     metadata   = json.load(open(metadata))
@@ -21,18 +22,21 @@ def process_task(metadata):
     bids       = metadata['bids']
 
     # Get descriptor and invocation
-    desc_local = op.join(local, "descriptor.json")
-    aws_get(descriptor, desc_local)
-    invo_local = op.join(local, "invocation.json")
-    aws_get(invocation, local)
+    desc_local = op.join(local_task_dir, "descriptor.json")
+    os.system("cp {} {}".format(descriptor, desc_local))
+    # aws_get(descriptor, desc_local)
+
+    invo_local = op.join(local_task_dir, "invocation.json")
+    os.system("cp {} {}".format(invocation, invo_local))
+    # aws_get(invocation, local)
 
     # Get input data
-    local = "/data/"
-    for dataloc in input_data:
-        aws_get(dataloc, local)
+    local_data_dir = "/data/"
+    # for dataloc in input_data:
+    #     aws_get(dataloc, op.join(local, input_data[dataloc]))
 
     # Move to correct location
-    os.chdir('/data')
+    os.chdir(local_data_dir)
 
     # Validate descriptor + invocation + input data combo
     bosh.validate(desc_local)
@@ -41,14 +45,24 @@ def process_task(metadata):
         parties = json.load(open(invo_local)).get("participant_label")
         if len(parties) > 0:
             for part in parties:
-                
+                continue
+                #TODO: BIDS thing
 
     # Launch task
     bosh.execute('launch',  desc_local, invo_local)
 
     # Get list of bosh exec outputs
+    with open(desc_local) as fhandle:
+        outputs_all = json.load(fhandle)["output-files"]
+
+    outputs_present = []
+    for outfile in outputs_all:
+        outputs_present += [outfile] if op.exists(outfile) else []
 
     # Push outputs
+    for local_output in outputs_present:
+        remote_output = op.relpath(local_data_dir, local_output)
+        print(remote_output)
     # local = "/path/to/some/outputs"
     # remote = "s3://something"
     # aws_post(local, remote)
@@ -58,7 +72,7 @@ def aws_get(remote, local):
     s3 = boto3.resource("s3")
 
     split = re.split("s3://([a-zA-Z0-9_-]+)/([a-zA-Z0-9/_-]+)", remote)
-    bucket, rpath = split[1], split[2]
+    bucket, rpath = split[0], split[1]
 
     buck = s3.Bucket(bucket)
     files = [obj.key for obj in buck.objects.filter(Prefix=rpath)]
