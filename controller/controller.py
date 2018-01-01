@@ -29,10 +29,11 @@ def configure_iam_roles(iam, verb=False):
     with open(fp) as fhandle:
         roles = json.load(fhandle)
 
-    policies = ['arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole',
-                'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role']
+    policies = {'batch': 'arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole',
+                'spot': 'arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetRole',
+                'ecs': 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'}
 
-    for idx, rolename in enumerate(roles):
+    for rolename in roles:
         role = roles[rolename]
         try:
             name = role['RoleName']
@@ -43,14 +44,14 @@ def configure_iam_roles(iam, verb=False):
             if e.response['Error']['Code'] == 'NoSuchEntity':
                 if verb:
                     print("Role \"{}\" not found - making role...".format(name))
-                role['AssumeRolePolicyDocument'] = role['AssumeRolePolicyDocument'].replace('\'', '"')
+                role['AssumeRolePolicyDocument'] = json.dumps(role['AssumeRolePolicyDocument'])
                 response = iam.create_role(**role)
                 role['Arn'] = response['Role']['Arn']
                 iam.create_instance_profile(InstanceProfileName=name)
                 iam.add_role_to_instance_profile(InstanceProfileName=name, RoleName=name)
 
                 iam.attach_role_policy(RoleName=name,
-                                       PolicyArn=policies[idx])
+                                       PolicyArn=policies[rolename])
                 roles[rolename] = role
         if verb:
             print("Role ARN: {}".format(roles[rolename]['Arn']))
@@ -116,6 +117,7 @@ def configure_batch(ec2, batch, verb=False):
                 print("Environment \"{}\" not found - creating environment...".format(name))
             compute['computeResources']['subnets'] = net
             compute['computeResources']['securityGroupIds'] = sg
+            compute['computeResources']['spotIamFleetRole'] = roles['spot']['Arn']
             compute['computeResources']['instanceRole'] = roles['ecs']['Arn'].replace('role', 'instance-profile')
             compute['serviceRole'] = roles['batch']['Arn']
 

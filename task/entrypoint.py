@@ -56,12 +56,15 @@ def process_task(metadata):
         outputs_all = json.load(fhandle)["output-files"]
 
     outputs_present = []
-    for outfile in outputs_all:
+    outputs_all = bosh.query(desc_local, invo_local, 'output-files/')
+    for outfile in outputs_all.values():
         outputs_present += [outfile] if op.exists(outfile) else []
+    print(outputs_present)
 
     # Push outputs
     for local_output in outputs_present:
-        remote_output = op.relpath(local_data_dir, local_output)
+        remote_output = op.relpath(local_output, local_data_dir)
+        print(local_output, local_data_dir)
         print(remote_output)
     # local = "/path/to/some/outputs"
     # remote = "s3://something"
