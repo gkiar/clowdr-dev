@@ -3,11 +3,14 @@
 from botocore.exceptions import *
 from argparse import ArgumentParser
 import random
+import string
 import boto3
 import json
 import time
 import datetime
 import os
+import os.path as op
+import re
 import sys
 
 curdir = os.path.dirname(__file__)
@@ -55,6 +58,7 @@ def configure_iam_roles(iam, verb=False):
                 roles[rolename] = role
         if verb:
             print("Role ARN: {}".format(roles[rolename]['Arn']))
+    return roles
 
 
 def configure_s3(s3, verb=False):
@@ -74,7 +78,7 @@ def configure_s3(s3, verb=False):
             print("S3 Bucket name: /{}".format(response['Location']))
 
 
-def configure_batch(ec2, batch, verb=False):
+def configure_batch(ec2, batch, roles, verb=False):
     sg = [sg['GroupId'] for sg in ec2.describe_security_groups()['SecurityGroups'] if sg['GroupName'] == 'default']
     net = [nets['SubnetId'] for nets in ec2.describe_subnets()['Subnets']]
 
@@ -177,12 +181,13 @@ def configure_batch(ec2, batch, verb=False):
         print("Job Definition ARN: {}".format(job['jobDefinitionArn']))
 
 
-
 def launch_job(batch, creds, dpath):
     orides = {"environment":[{"name":"AWS_ACCESS_KEY_ID","value":creds[0]},
                              {"name":"AWS_SECRET_ACCESS_KEY","value":creds[1]}],
               "command":[dpath]}
-    response = batch.submit_job(jobName="testing-2", jobQueue="clowdr-q",
+    p1, p2 = re.match('.+\/.+-(\w+)\/metadata-([A-Za-z0-9]+).json', dpath).group(1, 2)
+    response = batch.submit_job(jobName="clowdr_{}-{}".format(p1, p2),
+                                jobQueue="clowdr-q",
                                 jobDefinition="clowdr",
                                 containerOverrides=orides)
     jid = response['jobId']
@@ -229,7 +234,7 @@ def aws_driver(descriptor, invocation, credentials,
 
     # Configure roles in AWS
     iam = session.client('iam')
-    configure_iam_roles(iam, verb=verb)
+    roles = configure_iam_roles(iam, verb=verb)
 
     # Ensure the provided Bucket exists, and that we have write access
     s3 = session.client('s3')
@@ -238,52 +243,80 @@ def aws_driver(descriptor, invocation, credentials,
     # Configure Batch/EC2 setting
     ec2 = session.client('ec2')
     batch = session.client('batch')
-    configure_batch(ec2, batch, verb=verb)
+    configure_batch(ec2, batch, roles, verb=verb)
 
     # Push invocation, descriptor, metadata to S3
-    # data = "s3://clowdr-storage"
     data_bucket = datapath.split("/")[2]
 
     ts = time.time()
     dt = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
-    randx = random.randint(0, 1000000)
+    randx = "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
     metadict = {}
-    metadict["output_loc"] = outpath
-    if bids:
-        parties = json.load(open(invocation)).get("participant_label")
-        if len(parties) > 0:
-            metadict["input_data"] = ["{}/sub-{}/".format(datapath.strip('/'), sub)
-                                      for sub in parties]
-        else:
-            metadict["input_data"] = [datapath]
-        pref = "/".join(datapath.split('/')[3:])
-        dataset_info = s3.list_objects(Bucket=data_bucket, Prefix=pref, Delimiter="sub-")
-        metadict["input_data"] += ["s3://{}/{}".format(data_bucket, thing['Key'])
-                                   for thing in dataset_info['Contents']]
+    metadict["output_loc"] = op.join(outpath, randx)
 
-    dpath = "clowdrtask/{}/{}/descriptor.json".format(dt, randx)
+    dpath = "clowdrtask/{}-{}/descriptor.json".format(dt, randx)
     s3.upload_file(descriptor, data_bucket, dpath)
     metadict["descriptor"] = "s3://{}/{}".format(data_bucket, dpath)
 
-    ipath = "clowdrtask/{}/{}/invocation.json".format(dt, randx)
-    s3.upload_file(invocation, data_bucket, ipath)
-    metadict["invocation"] = "s3://{}/{}".format(data_bucket, ipath)
+    if bids:
+        tmpinvo = json.load(open(invocation))
 
-    metadata = '/tmp/metadata-{}.json'.format(randx)
-    with open(metadata, 'w') as fhandle:
-        fhandle.write(json.dumps(metadict))
+        pref = "/".join(datapath.split('/')[3:])
+        dataset_info = s3.list_objects(Bucket=data_bucket, Prefix=pref, Delimiter="sub-")
+        dataset_list = ["s3://{}-{}".format(data_bucket, item['Key'])
+                        for item in dataset_info['Contents']]
 
-    s3.upload_file(metadata, data_bucket,
-                   "clowdrtask/{}/{}/metadata.json".format(dt, randx))
+        parties = tmpinvo.get("participant_label")
+        if parties is None:
+            party_info = s3.list_objects(Bucket=data_bucket, Prefix="{}sub-".format(pref), Delimiter="/")
+            parties = [party['Prefix'].split('/')[-2].split('sub-')[-1]
+                       for party in party_info['CommonPrefixes']]
 
-    loc = "s3://{}/clowdrtask/{}/{}/metadata.json".format(data_bucket, dt, randx)
+        for party in parties:
+            tmpinvo["participant_label"] = [party]
 
-    # Submit job
-    jid = launch_job(batch, creds, loc)
+            metadict["input_data"] = ["{}/sub-{}/".format(datapath.strip('/'), party)]
+            metadict["input_data"] += dataset_list
 
-    if not detach or verb:
-        print("Launched job with ID: {}".format(jid))
+            invocation = "/tmp/invocation-{}-{}.json".format(randx, party)
+            with open(invocation, 'w') as fhandle:
+                fhandle.write(json.dumps(tmpinvo))
+
+            ipath = "clowdrtask/{}-{}/invocation-{}.json".format(dt, randx, party)
+            s3.upload_file(invocation, data_bucket, ipath)
+            metadict["invocation"] = "s3://{}/{}".format(data_bucket, ipath)
+            
+            metadata = '/tmp/metadata-{}-{}.json'.format(randx, party)
+            with open(metadata, 'w') as fhandle:
+                fhandle.write(json.dumps(metadict))
+
+            s3.upload_file(metadata, data_bucket, "clowdrtask/{}-{}/metadata-{}.json".format(dt, randx, party))
+            loc = "s3://{}/clowdrtask/{}-{}/metadata-{}.json".format(data_bucket, dt, randx, party)
+
+            # Submit job
+            jid = launch_job(batch, creds, loc)
+            if not detach or verb:
+                print("Launched job with ID: {}".format(jid))
+
+    else:
+        metadict["input_data"] = [datapath]
+
+        ipath = "clowdrtask/{}/{}/invocation-{}.json".format(dt, randx)
+        s3.upload_file(invocation, data_bucket, ipath)
+        metadict["invocation"] = "s3://{}/{}".format(data_bucket, ipath)
+        
+        metadata = '/tmp/metadata-{}.json'.format(randx)
+        with open(metadata, 'w') as fhandle:
+            fhandle.write(json.dumps(metadict))
+
+        s3.upload_file(metadata, data_bucket, "clowdrtask/{}/{}/metadata.json".format(dt, randx))
+        loc = "s3://{}/clowdrtask/{}/{}/metadata.json".format(data_bucket, dt, randx)
+
+        # Submit job
+        jid = launch_job(batch, creds, loc)
+        if not detach or verb:
+            print("Launched job with ID: {}".format(jid))
 
     if not detach:
         log = session.client('logs')
