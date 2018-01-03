@@ -27,7 +27,7 @@
         "environment": [],
         "mountPoints": [
             {
-                "containerPath": "/data",
+                "containerPath": "/clowdata",
                 "readOnly": false,
                 "sourceVolume": "data-volume"
             },
