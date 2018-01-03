@@ -64,13 +64,15 @@ If you prefer to setup *Clowdr* locally, you may run:
 4. We uploaded our sample [BIDS dataset](http://bids.neuroimaging.io) to Amazon S3 at `s3://clowdr-storage/ds114/`
 5. We launch our jobs with the following line:
 
-    docker run -ti -v ${PWD}:${PWD} -w ${PWD} gkiar/clowdr-controller \
-                                                examples/bet/descriptor.json \
-                                                examples/bet/invocation.json \
-                                                credentials.csv \
-                                                s3://clowdr-storage/ds114/ \
-                                                s3://clowdr-storage/ds114/derivatives/bids-example/ \
-                                                --bids -dv
+```
+docker run -ti -v ${PWD}:${PWD} -w ${PWD} gkiar/clowdr-controller \
+                                            examples/bet/descriptor.json \
+                                            examples/bet/invocation.json \
+                                            credentials.csv \
+                                            s3://clowdr-storage/ds114/ \
+                                            s3://clowdr-storage/ds114/derivatives/bids-example/ \
+                                            --bids -dv
+```
 
 
 ## Getting Started (User)
@@ -82,22 +84,26 @@ If you prefer to setup *Clowdr* locally, you may run:
 3. Draft an invocation with specific parameters you wish to use
 4. Launch as follows (substituting your values):
 
-    python controller/controller.py \
-           examples/bet/descriptor.json \
-           examples/bet/invocation.json \
-           credentials.csv \
-           s3://clowdr-storage/ds114/ \
-           s3://clowdr-storage/ds114/derivatives/bids-example/ \
-           --bids -dv
-           
+```
+python controller/controller.py \
+         examples/bet/descriptor.json \
+         examples/bet/invocation.json \
+         credentials.csv \
+         s3://clowdr-storage/ds114/ \
+         s3://clowdr-storage/ds114/derivatives/bids-example/ \
+         --bids -dv
+```
+
 ## Getting Started (Developer)
 
 (to be improved)
 
-    docker run -v /clowdata/:/clowdata/ \
-               -v /var/run/docker.sock:/var/run/docker.sock \
-               -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY} \
-               -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-               --privileged
-               gkiar/clowdr-task:02012018
-               s3://clowdr-storage/metadata.json
+```
+docker run -v /clowdata/:/clowdata/ \
+           -v /var/run/docker.sock:/var/run/docker.sock \
+           -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY} \
+           -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+           --privileged \
+           gkiar/clowdr-task:02012018 \
+           s3://clowdr-storage/metadata.json
+```
