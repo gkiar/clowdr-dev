@@ -3,7 +3,7 @@
     "type": "container",
     "parameters": {},
     "containerProperties": {
-        "image": "gkiar/clowdrtask",
+        "image": "gkiar/clowdr-task:latest",
         "vcpus": 1,
         "memory": 2000,
         "command": [
@@ -13,7 +13,7 @@
         "volumes": [
             {
                 "host": {
-                    "sourcePath": "/data"
+                    "sourcePath": "/clowdata"
                 },
                 "name": "data-volume"
             },
