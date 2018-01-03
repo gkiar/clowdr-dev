@@ -24,7 +24,9 @@ to support the [Kubernetes](https://kubernetes.io/) cloud management software, a
 ## System Requirements
 
 - Docker
+
 OR
+
 - Python2.7 or newer
 - Git client
 
@@ -52,29 +54,50 @@ If you prefer to setup *Clowdr* locally, you may run:
     cd clowdr-dev
     pip install -r requirements.txt
 
+## Example
 
-## Getting Started
+(to be improved)
 
-### Clowdr Controller
+1. We wish to run FSL's Brain Extraction Tool
+2. The Boutiques descriptor for this, as a [BIDS app](https://bids-apps.neuroimaging.io), is [here](./examples/bet/descriptor.json)
+3. We created a sample invocation for using this descriptor, [here](./examples/bet/invocation.json)
+4. We uploaded our sample [BIDS dataset](http://bids.neuroimaging.io) to Amazon S3 at `s3://clowdr-storage/ds114/`
+5. We launch our jobs with the following line:
 
-```
-python controller/controller.py \
-       examples/bet/descriptor.json \
-       examples/bet/invocation.json \
-       credentials.csv \
-       s3://clowdr-storage/ds114/ \
-       s3://clowdr-storage/ds114/derivatives/bids-example/ \
-       --bids -dv
-```
+    docker run -ti -v ${PWD}:${PWD} -w ${PWD} gkiar/clowdr-controller \
+                                                examples/bet/descriptor.json \
+                                                examples/bet/invocation.json \
+                                                credentials.csv \
+                                                s3://clowdr-storage/ds114/ \
+                                                s3://clowdr-storage/ds114/derivatives/bids-example/ \
+                                                --bids -dv
 
-### Clowdr Task
 
-```
-docker run -v /clowdata/:/clowdata/ \
-           -v /var/run/docker.sock:/var/run/docker.sock \
-           -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY} \
-           -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
-           --privileged
-           gkiar/clowdr-task:02012018
-           s3://clowdr-storage/metadata.json
-```
+## Getting Started (User)
+
+(to be improved)
+
+1. Find the Boutiques descriptor for the tool you wish to run - some of these for neuroimaging are available on [Neurolinks](https://brainhack101.github.io/neurolinks), for example
+2. Put your data on Amazon S3
+3. Draft an invocation with specific parameters you wish to use
+4. Launch as follows (substituting your values):
+
+    python controller/controller.py \
+           examples/bet/descriptor.json \
+           examples/bet/invocation.json \
+           credentials.csv \
+           s3://clowdr-storage/ds114/ \
+           s3://clowdr-storage/ds114/derivatives/bids-example/ \
+           --bids -dv
+           
+## Getting Started (Developer)
+
+(to be improved)
+
+    docker run -v /clowdata/:/clowdata/ \
+               -v /var/run/docker.sock:/var/run/docker.sock \
+               -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY} \
+               -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+               --privileged
+               gkiar/clowdr-task:02012018
+               s3://clowdr-storage/metadata.json
