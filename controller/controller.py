@@ -265,7 +265,7 @@ def aws_driver(descriptor, invocation, credentials,
 
         pref = "/".join(datapath.split('/')[3:])
         dataset_info = s3.list_objects(Bucket=data_bucket, Prefix=pref, Delimiter="sub-")
-        dataset_list = ["s3://{}-{}".format(data_bucket, item['Key'])
+        dataset_list = ["s3://{}/{}".format(data_bucket, item['Key'])
                         for item in dataset_info['Contents']]
 
         parties = tmpinvo.get("participant_label")
