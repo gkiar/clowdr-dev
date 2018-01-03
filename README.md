@@ -9,17 +9,26 @@
 <!-- [![pyversions](https://img.shields.io/pypi/pyversions/clowdr.svg)](https://pypi.python.org/pypi/clowdr/) -->
 -----
 
-*Clowdr* can be thought of as a cloud execution utility for [Boutiques](http://boutiques.github.io), the JSON-based descriptive command-line framework.
-As Boutiques and the [Boutiques tools](https://github.com/boutiques/boutiques) allow the encapsulation, validation, evaluation, and deployment of
-command-line routines, *Clowdr* inherits and extends this functionality to remote datasets and computational resources.
+*Clowdr* can be thought of as a cloud execution utility for [Boutiques](http://boutiques.github.io), the JSON-based
+descriptive command-line framework. As Boutiques and the [Boutiques tools](https://github.com/boutiques/boutiques) allow
+the encapsulation, validation, evaluation, and deployment of command-line routines, *Clowdr* inherits and extends this 
+functionality to remote datasets and computational resources.
 
-*Clowdr* is comprised of two key features: the **controller** and the **task**. The controller is the main user-facing function which accepts standard
-inputs pertaining to the tool and dataset to be used, and ultimately launches jobs encapsulated by a task. The task takes a pointer to the job
-metadata, fetches all relevant instructions and input data, runs the job, and propagates back the results. While typical users may only ever interact with
-the controller, tasks may be launched manually by developers in order to debug and verify their tool's execution.
+*Clowdr* is comprised of two key features: the **controller** and the **task**. The controller is the main user-facing 
+function which accepts standard inputs pertaining to the tool and dataset to be used, and ultimately launches jobs 
+encapsulated by a task. The task takes a pointer to the job metadata, fetches all relevant instructions and input data,
+runs the job, and propagates back the results. A more in-depth description of these can be seen in the Figures below.
+While typical users may only ever interact with the controller, tasks may be launched manually by developers to debug and 
+verify their tool's execution.
 
-While initial development of *Clowdr* has been specific to the [Amazon Web Services](https://aws.amazon.com), the goal is that this project will be extended
-to support the [Kubernetes](https://kubernetes.io/) cloud management software, and will extensible to arbitrary captive or commercial clouds.
+<div style="text-align:center">
+<img src="./docs/clowdr_controller.png" width="54%"/>
+<img src="./docs/clowdr_task.png" width="36.5%"/>
+</div>
+
+While initial development of *Clowdr* has been specific to the [Amazon Web Services](https://aws.amazon.com), the goal is
+that this project will be extended to support the [Kubernetes](https://kubernetes.io/) cloud management software, and will 
+be extensible to arbitrary captive or commercial clouds.
 
 ## System Requirements
 
@@ -40,8 +49,8 @@ To use *Clowdr* in Docker, simply pull the latest container(s) from DockerHub:
 
     docker pull gkiar/clowdr-controller
 
-For users wishing to deploy their tool on the cloud immediately, the above container is sufficient. If you wish to perform local development and deployment as well,
-you must also download the task container:
+For users wishing to deploy their tool on the cloud immediately, the above container is sufficient. If you wish to perform 
+local development and deployment as well, you must also download the task container:
 
     docker pull gkiar/clowdr-task
 
