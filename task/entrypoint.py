@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser
+from shutil import copy, copytree
 import re
 import os.path as op
 import boutiques as bosh
@@ -12,41 +13,33 @@ import json
 def process_task(metadata):
     # Get metadata
     local_task_dir = "/task/"
-    # aws_get(metadata, local)
+    print("Fetching metadata...")
+    metadata = get(metadata, local_task_dir)[0]
 
     # Parse metadata
     metadata   = json.load(open(metadata))
     descriptor = metadata['descriptor']
     invocation = metadata['invocation']
     input_data = metadata['input_data']
-    bids       = metadata['bids']
+    output_loc = metadata['output_loc']
 
+    print("Fetching descriptor and invocation...")
     # Get descriptor and invocation
-    desc_local = op.join(local_task_dir, "descriptor.json")
-    os.system("cp {} {}".format(descriptor, desc_local))
-    # aws_get(descriptor, desc_local)
+    desc_local = get(descriptor, local_task_dir)[0]
+    invo_local = get(invocation, local_task_dir)[0]
 
-    invo_local = op.join(local_task_dir, "invocation.json")
-    os.system("cp {} {}".format(invocation, invo_local))
-    # aws_get(invocation, local)
-
+    print("Fetching input data...")
     # Get input data
-    local_data_dir = "/data/"
-    # for dataloc in input_data:
-    #     aws_get(dataloc, op.join(local, input_data[dataloc]))
+    local_data_dir = "/clowdata/"
+    for dataloc in input_data:
+        get(dataloc, local_data_dir)
 
     # Move to correct location
     os.chdir(local_data_dir)
 
-    # Validate descriptor + invocation + input data combo
-    bosh.validate(desc_local)
-
-    if bids:
-        parties = json.load(open(invo_local)).get("participant_label")
-        if len(parties) > 0:
-            for part in parties:
-                continue
-                #TODO: BIDS thing
+    print("Beginning execution...")
+    # Validate descriptor + invocation
+    bosh.invocation(desc_local, "-i", invo_local)
 
     # Launch task
     bosh.execute('launch',  desc_local, invo_local)
@@ -56,42 +49,66 @@ def process_task(metadata):
         outputs_all = json.load(fhandle)["output-files"]
 
     outputs_present = []
-    outputs_all = bosh.query(desc_local, invo_local, 'output-files/')
+    outputs_all = bosh.evaluate(desc_local, invo_local, 'output-files/')
     for outfile in outputs_all.values():
         outputs_present += [outfile] if op.exists(outfile) else []
-    print(outputs_present)
 
+    print("Uploading outputs...")
     # Push outputs
     for local_output in outputs_present:
-        remote_output = op.relpath(local_output, local_data_dir)
-        print(local_output, local_data_dir)
-        print(remote_output)
-    # local = "/path/to/some/outputs"
-    # remote = "s3://something"
-    # aws_post(local, remote)
+        print("{}{} --> {}".format(local_data_dir, local_output, output_loc))
+        post(local_data_dir + local_output, output_loc)
+
+
+def get(remote, local):
+    if remote.startswith("s3://"):
+        return aws_get(remote, local)
+    elif op.isdir(remote):
+        copytree(remote, local)
+    else:
+        copy(remote, local)
+
+
+def post(local, remote):
+    if "s3://" in remote:
+        return aws_post(local, remote)
+    elif op.isdir(local):
+        copytree(local, remote)
+    else:
+        copy(local, remote)
 
 
 def aws_get(remote, local):
     s3 = boto3.resource("s3")
 
-    split = re.split("s3://([a-zA-Z0-9_-]+)/([a-zA-Z0-9/_-]+)", remote)
-    bucket, rpath = split[0], split[1]
+    bucket, rpath = remote.split('/')[2], remote.split('/')[3:]
+    rpath = "/".join(rpath)
 
     buck = s3.Bucket(bucket)
     files = [obj.key for obj in buck.objects.filter(Prefix=rpath)]
+    files_local = []
     for fl in files:
         fl_local = op.join(local, fl)
+        files_local += [fl_local]
         os.makedirs(op.dirname(fl_local), exist_ok=True)
         buck.download_file(fl, fl_local)
 
+    return files_local
+
 
 def aws_post(local, remote):
+    # Credit: https://github.com/boto/boto3/issues/358#issuecomment-346093506
+    local_files = [op.join(root, f)
+                   for root, dirs, files in os.walk(local)
+                   for f in files]
+
     s3 = boto3.client("s3")
+    bucket, rpath = remote.split('/')[2], remote.split('/')[3:]
+    rpath = "/".join(rpath)
 
-    split = re.split("s3://([a-zA-Z0-9_-]+)/([a-zA-Z0-9/_-]+)", remote)
-    bucket, rpath = split[1], split[2]
-
-    s3.upload(local, bucket, rpath)
+    for flocal in local_files:
+        rempat = op.join(rpath, op.relpath(flocal, local))
+        s3.upload_file(flocal, bucket, rempat)
 
 
 def main(args=None):

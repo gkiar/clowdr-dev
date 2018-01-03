@@ -1,0 +1,8 @@
+{
+  "input_data": [
+    "s3://clowdr-storage/ds114/sub-01/"
+  ],
+	"output_loc": "s3://clowdr-storage/ds114/skull-stripped/",
+  "descriptor": "s3://clowdr-storage/tmptask/descriptor.json",
+  "invocation": "s3://clowdr-storage/tmptask/invocation.json"
+}

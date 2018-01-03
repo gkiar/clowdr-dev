@@ -47,7 +47,6 @@
             "description": "Level of the analysis that will be performed. Multiple participant level analyses can be run independently (in parallel).",
             "id": "analysis_level",
             "name": "Analysis level",
-            "optional": false,
             "type": "String",
             "value-choices": [
                 "participant",
