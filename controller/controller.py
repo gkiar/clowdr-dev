@@ -121,7 +121,8 @@ def configure_batch(ec2, batch, roles, verb=False):
                 print("Environment \"{}\" not found - creating environment...".format(name))
             compute['computeResources']['subnets'] = net
             compute['computeResources']['securityGroupIds'] = sg
-            compute['computeResources']['spotIamFleetRole'] = roles['spot']['Arn']
+            if compute['computeResources']['type'] == 'SPOT':
+                compute['computeResources']['spotIamFleetRole'] = roles['spot']['Arn']
             compute['computeResources']['instanceRole'] = roles['ecs']['Arn'].replace('role', 'instance-profile')
             compute['serviceRole'] = roles['batch']['Arn']
 

@@ -3,7 +3,9 @@
     "type": "MANAGED",
     "state": "ENABLED",
     "computeResources": {
-        "type": "EC2",
+        "type": "SPOT",
+        "bidPercentage": 99,
+        "spotIamFleetRole": "",
         "minvCpus": 0,
         "maxvCpus": 512,
         "desiredvCpus": 2,
