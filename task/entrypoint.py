@@ -28,11 +28,16 @@ def process_task(metadata):
     desc_local = get(descriptor, local_task_dir)[0]
     invo_local = get(invocation, local_task_dir)[0]
 
-    print("Fetching input data...")
-    # Get input data
+    print("Mounting input data...")
+    # Mount input data
     local_data_dir = "/clowdata/"
-    for dataloc in input_data:
-        get(dataloc, local_data_dir)
+    os.system("mkdir -p {}".format(local_data_dir))
+    os.system("echo ${AWS_ACCESS_KEY}:${AWS_SECRET_ACCESS_KEY} > /etc/awspass")
+    os.system("chmod 600 /etc/awspass")
+    tbuck, tpath = input_data.split('://')
+    os.system("s3fs {}:{} {}/ -o passwd_file=/etc/awspass -o ulimit=0002".format(tbuck,
+                                                                                 tpath,
+                                                                                 local_data_dir))
 
     # Move to correct location
     os.chdir(local_data_dir)
@@ -53,6 +58,8 @@ def process_task(metadata):
     for outfile in outputs_all.values():
         outputs_present += [outfile] if op.exists(outfile) else []
 
+    #TODO: remove upload, and instead push a list of them back
+    # to the invoc directory
     print("Uploading outputs...")
     # Push outputs
     for local_output in outputs_present:
