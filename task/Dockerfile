@@ -1,7 +1,6 @@
-FROM ubuntu:16.04
+FROM jpetazzo/dind:latest
 
 RUN apt-get update
-RUN apt-get install -y docker.io
 RUN apt-get install -y automake \
                        autotools-dev \
                        fuse \
@@ -33,7 +32,9 @@ RUN pip3 install jsonschema \
 RUN mkdir /clowtask /clowdata && \
 		chmod 777 /clowtask /clowdata
 
-COPY entrypoint.py /opt/entrypoint.py
-RUN chmod +x /opt/entrypoint.py
+COPY task.py /opt/task.py
+RUN chmod +x /opt/task.py
 
-ENTRYPOINT ["python3", "/opt/entrypoint.py"]
+COPY .bashrc ~/.bashrc
+
+ENTRYPOINT ["wrapdocker"]

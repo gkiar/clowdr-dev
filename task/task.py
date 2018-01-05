@@ -12,7 +12,7 @@ import json
 
 def process_task(metadata):
     # Get metadata
-    local_task_dir = "/task/"
+    local_task_dir = "/clowtask/"
     print("Fetching metadata...")
     metadata = get(metadata, local_task_dir)[0]
 

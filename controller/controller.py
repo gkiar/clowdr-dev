@@ -184,8 +184,8 @@ def configure_batch(ec2, batch, roles, verb=False):
 
 def launch_job(batch, creds, dpath):
     orides = {"environment":[{"name":"AWS_ACCESS_KEY_ID","value":creds[0]},
-                             {"name":"AWS_SECRET_ACCESS_KEY","value":creds[1]}],
-              "command":[dpath]}
+                             {"name":"AWS_SECRET_ACCESS_KEY","value":creds[1]},
+                             {"name":"METADATA_LOCATION", "value":dpath}]}
     p1, p2 = re.match('.+\/.+-(\w+)\/metadata-([A-Za-z0-9]+).json', dpath).group(1, 2)
     response = batch.submit_job(jobName="clowdr_{}-{}".format(p1, p2),
                                 jobQueue="clowdr-q",
