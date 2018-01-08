@@ -12,7 +12,7 @@ import json
 
 def process_task(metadata):
     # Get metadata
-    local_task_dir = "/clowtask/"
+    local_task_dir = "/data/task/"
     print("Fetching metadata...")
     metadata = get(metadata, local_task_dir)[0]
 
@@ -30,15 +30,15 @@ def process_task(metadata):
 
     print("Mounting input data...")
     # Mount input data
-    local_data_dir = "/clowdata/"
-    tbuck, tpath = re.match('^s3://([A-Za-z0-9\_\-\.]+)\/(.+)', input_data).group(1, 2)
-    tpath = tpath.strip('/') + '/'
-    os.system("mkdir -p {}".format(local_data_dir))
-    os.system("echo $AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY > {}awspass".format(local_task_dir))
-    os.system("chmod 600 {}awspass".format(local_task_dir))
-    os.system("s3fs {}:/{} {} -o passwd_file={}awspass -o umask=0002".format(tbuck, tpath,
-                                                                             local_data_dir,
-                                                                             local_task_dir))
+    local_data_dir = "/data/s3fs/monday/"
+    # tbuck, tpath = re.match('^s3://([A-Za-z0-9\_\-\.]+)\/(.+)', input_data).group(1, 2)
+    # tpath = tpath.strip('/') + '/'
+    # os.system("mkdir -p {}".format(local_data_dir))
+    # os.system("echo $AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY > {}awspass".format(local_task_dir))
+    # os.system("chmod 600 {}awspass".format(local_task_dir))
+    # os.system("s3fs {}:/{} {} -o passwd_file={}awspass -o umask=0002".format(tbuck, tpath,
+    #                                                                          local_data_dir,
+    #                                                                          local_task_dir))
 
     # Move to correct location
     os.chdir(local_data_dir)
@@ -59,9 +59,9 @@ def process_task(metadata):
     for outfile in outputs_all.values():
         outputs_present += [outfile] if op.exists(outfile) else []
 
-    #TODO: remove upload, and instead push a list of them back
+    # TODO: remove upload, and instead push a list of them back
     # to the invoc directory
-    print("Uploading outputs...")
+    # print("Uploading outputs...")
     # Push outputs
     # for local_output in outputs_present:
     #     print("{}{} --> {}".format(local_data_dir, local_output, output_loc))
