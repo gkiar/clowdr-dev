@@ -1,6 +1,6 @@
 {
-  "bids_dir": "ds114",
-  "output_dir_name": "ds114/skull-stripped/",
+  "bids_dir": "/clowdata/hbn/",
+  "output_dir_name": "/clowdata/hbn/bogglified/",
   "analysis_level": "participant",
   "participant_label": ["NDARAA075AMK"]
 }
