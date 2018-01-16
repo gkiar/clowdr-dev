@@ -4,8 +4,8 @@
     "parameters": {},
     "containerProperties": {
         "image": "gkiar/clowdr-task:latest",
-        "vcpus": 1,
-        "memory": 2000,
+        "vcpus": 2,
+        "memory": 8000,
         "command": [
             "docker",
             "ps"
