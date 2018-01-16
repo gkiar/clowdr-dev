@@ -264,9 +264,9 @@ def aws_driver(descriptor, invocation, credentials,
         tmpinvo = json.load(open(invocation))
 
         pref = "/".join(datapath.split('/')[3:])
-        dataset_info = s3.list_objects(Bucket=data_bucket, Prefix=pref, Delimiter="sub-")
-        dataset_list = ["s3://{}/{}".format(data_bucket, item['Key'])
-                        for item in dataset_info['Contents']]
+        # dataset_info = s3.list_objects(Bucket=data_bucket, Prefix=pref, Delimiter="sub-")
+        # dataset_list = ["s3://{}/{}".format(data_bucket, item['Key'])
+        #                 for item in dataset_info['Contents']]
 
         parties = tmpinvo.get("participant_label")
         if parties is None:
@@ -278,7 +278,7 @@ def aws_driver(descriptor, invocation, credentials,
             tmpinvo["participant_label"] = [party]
 
             metadict["input_data"] = ["{}/sub-{}/".format(datapath.strip('/'), party)]
-            metadict["input_data"] += dataset_list
+            # metadict["input_data"] += dataset_list
 
             invocation = "/tmp/invocation-{}-{}.json".format(randx, party)
             with open(invocation, 'w') as fhandle:
