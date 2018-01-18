@@ -8,7 +8,7 @@ RUN pip3 install jsonschema simplejson boto3 awscli boutiques==0.5.5-dev1
 
 RUN mkdir /clowtask /clowdata &&\
 		chmod 777 /clowtask /clowdata
-COPY entrypoint.py /opt/entrypoint.py
-RUN chmod +x /opt/entrypoint.py
+COPY entrypoint.py /entrypoint.py
+RUN chmod +x /entrypoint.py
 
-ENTRYPOINT ["python3", "/opt/entrypoint.py"]
+ENTRYPOINT ["python3", "/entrypoint.py"]

@@ -38,9 +38,6 @@ def process_task(metadata):
     os.chdir(local_data_dir)
 
     print("Beginning execution...")
-    # Validate descriptor + invocation
-    bosh.invocation(desc_local, "-i", invo_local)
-
     # Launch task
     bosh.execute('launch',  desc_local, invo_local)
 
@@ -56,8 +53,8 @@ def process_task(metadata):
     print("Uploading outputs...")
     # Push outputs
     for local_output in outputs_present:
-        print("{}{} --> {}".format(local_data_dir, local_output, output_loc))
-        post(local_data_dir + local_output, output_loc)
+        print("{}{} --> {}".format(local_output, output_loc))
+        post(local_output, output_loc)
 
 
 def get(remote, local):

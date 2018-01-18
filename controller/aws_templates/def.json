@@ -3,7 +3,7 @@
     "type": "container",
     "parameters": {},
     "containerProperties": {
-        "image": "gkiar/clowdr-task:latest",
+        "image": "gkiar/clowdrtask:latest",
         "vcpus": 2,
         "memory": 8000,
         "command": [
