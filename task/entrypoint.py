@@ -53,7 +53,7 @@ def process_task(metadata):
     print("Uploading outputs...")
     # Push outputs
     for local_output in outputs_present:
-        print("{}{} --> {}".format(local_output, output_loc))
+        print("{} --> {}".format(local_output, output_loc))
         post(local_output, output_loc)
 
 
