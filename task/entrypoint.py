@@ -105,7 +105,7 @@ def aws_post(local, remote):
 
     for flocal in local_files:
         rempat = op.join(rpath, op.relpath(flocal, local))
-        s3.upload_file(flocal, bucket, rempat)
+        s3.upload_file(flocal, bucket, rempat, {'ACL': 'public-read'})
 
 
 def main(args=None):
