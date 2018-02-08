@@ -11,4 +11,4 @@ RUN mkdir /clowtask /clowdata &&\
 COPY entrypoint.py /entrypoint.py
 RUN chmod +x /entrypoint.py
 
-ENTRYPOINT ["python3", "/entrypoint.py"]
+ENTRYPOINT ["reprozip", "trace", "python3", "/entrypoint.py"]

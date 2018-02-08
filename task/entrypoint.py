@@ -82,12 +82,14 @@ def aws_get(remote, local):
     rpath = "/".join(rpath)
 
     buck = s3.Bucket(bucket)
-    files = [obj.key for obj in buck.objects.filter(Prefix=rpath)]
+    files = [obj.key for obj in buck.objects.filter(Prefix=rpath) if not os.path.isdir(obj.key)]
     files_local = []
     for fl in files:
         fl_local = op.join(local, fl)
         files_local += [fl_local]
         os.makedirs(op.dirname(fl_local), exist_ok=True)
+        if fl_local.strip('/') == op.dirname(fl_local).strip('/'):
+            continue;  # Create, but don't try to download directories
         buck.download_file(fl, fl_local)
 
     return files_local
