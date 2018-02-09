@@ -41,9 +41,6 @@ def process_task(metadata):
     print("Beginning execution...")
     # Launch task
     try:
-        cmd = 'reprozip usage_report --disable'
-        os.system(cmd)
-
         cmd = 'reprozip trace -w --dir={}clowprov/ bosh exec launch {} {}'
         os.system(cmd.format(local_data_dir, desc_local, invo_local))
 
