@@ -9,6 +9,7 @@ import boto3
 import os
 import json
 
+    
 
 def process_task(metadata):
     # Get metadata
@@ -39,7 +40,26 @@ def process_task(metadata):
 
     print("Beginning execution...")
     # Launch task
-    bosh.execute('launch',  desc_local, invo_local)
+    try:
+        cmd = 'reprozip usage_report --disable'
+        os.system(cmd)
+
+        cmd = 'reprozip trace -w --dir={}clowprov/ bosh exec launch {} {}'
+        os.system(cmd.format(local_data_dir, desc_local, invo_local))
+
+        cmd = 'reprozip pack {}clowprov/clowgraph.rpz'.format(local_data_dir)
+        os.system(cmd)
+
+        # from reprozip.main import main as rzip
+        # import sys
+        # sys.argv = ['reprozip', 'trace', '-w',
+        #             '--dir={}clowprov/'.format(local_data_dir),
+        #             'bosh exec launch {} {}'.format(desc_local, invo_local)]
+        # print(" ".join(sys.argv))
+        # rzip()
+    except ImportError:
+        print("(Reprozip not installed, no provenance tracing)")
+        std = bosh.execute('launch',  desc_local, invo_local)
 
     # Get list of bosh exec outputs
     with open(desc_local) as fhandle:
