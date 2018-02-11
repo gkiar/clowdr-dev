@@ -29,6 +29,10 @@ def process_task(metadata):
     desc_local = get(descriptor, local_task_dir)[0]
     invo_local = get(invocation, local_task_dir)[0]
 
+    task_loc   = op.dirname(invocation)
+    invo_id    = invo_local.split('.')[0].split('-')[-1]
+    # The above grabs an ID from the form: fname-#.ext
+
     print("Fetching input data...")
     # Get input data
     local_data_dir = "/clowdata/"
@@ -41,11 +45,17 @@ def process_task(metadata):
     print("Beginning execution...")
     # Launch task
     try:
-        cmd = 'reprozip trace -w --dir={}clowprov/ bosh exec launch {} {}'
-        os.system(cmd.format(local_data_dir, desc_local, invo_local))
+        graph_dir = '{}clowprov/'.format(local_data_dir)
+        graph_name = '{}clowdrgraph-{}.rpz'.format(graph_dir, invo_id)
 
-        cmd = 'reprozip pack {}clowprov/clowgraph.rpz'.format(local_data_dir)
-        os.system(cmd)
+        cmd = 'reprozip trace -w --dir={} bosh exec launch {} {}'
+        os.system(cmd.format(graph_dir, desc_local, invo_local))
+
+        cmd = 'reprozip pack --dir={} {}'
+        os.system(cmd.format(graph_dir, graph_name))
+
+        print("{} --> {}".format(graph_name, op.join(task_loc, op.basename(graph_name))))
+        post(graph_name, op.join(task_loc, op.basename(graph_name)))
 
         # from reprozip.main import main as rzip
         # import sys
@@ -114,16 +124,21 @@ def aws_get(remote, local):
 
 def aws_post(local, remote):
     # Credit: https://github.com/boto/boto3/issues/358#issuecomment-346093506
-    local_files = [op.join(root, f)
-                   for root, dirs, files in os.walk(local)
-                   for f in files]
+    if not op.isfile(local):
+        local_files = [op.join(root, f)
+                       for root, dirs, files in os.walk(local)
+                       for f in files]
+    else:
+        local_files = [local]
 
     s3 = boto3.client("s3")
     bucket, rpath = remote.split('/')[2], remote.split('/')[3:]
     rpath = "/".join(rpath)
 
     for flocal in local_files:
-        rempat = op.join(rpath, op.relpath(flocal, local))
+        rempat = rpath if local == flocal else op.join(rpath,
+                                                       op.relpath(flocal,
+                                                                  local))
         s3.upload_file(flocal, bucket, rempat, {'ACL': 'public-read'})
 
 
