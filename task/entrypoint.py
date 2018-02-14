@@ -9,7 +9,6 @@ import boto3
 import os
 import json
 
-    
 
 def process_task(metadata):
     # Get metadata
@@ -45,25 +44,18 @@ def process_task(metadata):
     print("Beginning execution...")
     # Launch task
     try:
-        graph_dir = '{}clowprov/'.format(local_data_dir)
-        graph_name = '{}clowdrgraph-{}.rpz'.format(graph_dir, invo_id)
+        std = bosh.execute('launch',  desc_local, invo_local)
+        # graph_dir = '{}clowprov/'.format(local_data_dir)
+        # graph_name = '{}clowdrgraph-{}.rpz'.format(graph_dir, invo_id)
 
-        cmd = 'reprozip trace -w --dir={} bosh exec launch {} {}'
-        os.system(cmd.format(graph_dir, desc_local, invo_local))
+        # cmd = 'reprozip trace -w --dir={} bosh exec launch {} {}'
+        # os.system(cmd.format(graph_dir, desc_local, invo_local))
 
-        cmd = 'reprozip pack --dir={} {}'
-        os.system(cmd.format(graph_dir, graph_name))
+        # cmd = 'reprozip pack --dir={} {}'
+        # os.system(cmd.format(graph_dir, graph_name))
 
-        print("{} --> {}".format(graph_name, op.join(task_loc, op.basename(graph_name))))
-        post(graph_name, op.join(task_loc, op.basename(graph_name)))
-
-        # from reprozip.main import main as rzip
-        # import sys
-        # sys.argv = ['reprozip', 'trace', '-w',
-        #             '--dir={}clowprov/'.format(local_data_dir),
-        #             'bosh exec launch {} {}'.format(desc_local, invo_local)]
-        # print(" ".join(sys.argv))
-        # rzip()
+        # print("{} --> {}".format(graph_name, op.join(task_loc, op.basename(graph_name))))
+        # post(graph_name, op.join(task_loc, op.basename(graph_name)))
     except ImportError:
         print("(Reprozip not installed, no provenance tracing)")
         std = bosh.execute('launch',  desc_local, invo_local)
