@@ -3,7 +3,7 @@
     "type": "container",
     "parameters": {},
     "containerProperties": {
-        "image": "gkiar/clowdrtask:18012018-2",
+        "image": "gkiar/clowdrtask:14022018-2",
         "vcpus": 2,
         "memory": 8000,
         "command": [
