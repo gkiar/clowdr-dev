@@ -1,5 +1,5 @@
 {
-	  "bids_dir": "ds114",
-	  "output_dir_name": "ds114/skull-stripped/",
+	  "bids_dir": "/clowdata/ds114",
+	  "output_dir_name": "/clowdata/ds114/derivatives/bids-example/",
 	  "analysis_level": "participant"
 }
